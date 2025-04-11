@@ -1,4 +1,4 @@
-# ocr_labelling_tool
+# Simple & Easy Labelling Tool For OCR Dataset Creation
 
 ![image](https://github.com/user-attachments/assets/182ea129-1ffd-4a26-a945-7ddb0c64c9c3)
 ![image](https://github.com/user-attachments/assets/0094b869-6898-45ec-97d9-081298ff1f35)
