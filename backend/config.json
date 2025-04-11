@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "username": "user1",
+      "password": "user1",
+      "batch_id": "batch1",
+      "batch_folder": "batch1"
+    },
+    {
+      "username": "user2",
+      "password": "user2",
+      "batch_id": "batch2",
+      "batch_folder": "batch2"
+    },
+    {
+      "username": "user3",
+      "password": "user3",
+      "batch_id": "batch3",
+      "batch_folder": "batch3"
+    },
+    {
+      "username": "user4",
+      "password": "user4",
+      "batch_id": "batch4",
+      "batch_folder": "batch4"
+    }
+  ]
+}
