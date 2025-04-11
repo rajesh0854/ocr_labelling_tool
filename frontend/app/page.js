@@ -160,13 +160,18 @@ export default function LoginPage() {
 
       if (response.ok) {
         localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.username);
         localStorage.setItem('batches', JSON.stringify(data.batches));
+        localStorage.setItem('username', username);
         
-        // Add a small delay for the loading animation
-        setTimeout(() => {
+        // Check if user is admin
+        if (data.is_admin) {
+          localStorage.setItem('isAdmin', 'true');
+          // Redirect admin to dashboard
+          router.push('/admin');
+        } else {
+          // Regular user goes to annotation page
           router.push('/annotation');
-        }, 800);
+        }
       } else {
         setError(data.message);
         setLoading(false);

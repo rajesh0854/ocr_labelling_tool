@@ -23,6 +23,12 @@
       "password": "user4",
       "batch_id": "batch4",
       "batch_folder": "batch4"
+    },
+    {
+      "username": "root",
+      "password": "root",
+      "is_admin": true,
+      "role": "super_user"
     }
   ]
 }

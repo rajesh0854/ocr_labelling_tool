@@ -74,16 +74,23 @@ batch_mappings = {}
 # Process configuration to build lookup dictionaries
 for user_config in config["users"]:
     username = user_config["username"]
-    batch_id = user_config["batch_id"]
-    batch_folder = user_config["batch_folder"]
+    is_admin = user_config.get("is_admin", False)
     
     # Create user entry
     users[username] = {
         "password": generate_password_hash(user_config["password"]),
-        "batches": [batch_id]
+        "is_admin": is_admin,
+        "role": user_config.get("role", "annotator"),
+        "batches": [user_config["batch_id"]] if "batch_id" in user_config else []
     }
     
+    # Skip batch creation for admin users
+    if is_admin:
+        continue
+        
     # Create batch entry
+    batch_id = user_config["batch_id"]
+    batch_folder = user_config["batch_folder"]
     batch_folder_path = os.path.join(IMAGES_DIR, batch_folder)
     os.makedirs(batch_folder_path, exist_ok=True)
     
@@ -121,13 +128,17 @@ def login():
     if check_password_hash(users[auth['username']]['password'], auth['password']):
         token = jwt.encode({
             'username': auth['username'],
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+            'is_admin': users[auth['username']].get('is_admin', False),
+            'role': users[auth['username']].get('role', 'annotator')
         }, app.config['SECRET_KEY'])
         
         return jsonify({
             'token': token,
             'username': auth['username'],
-            'batches': users[auth['username']]['batches']
+            'batches': users[auth['username']]['batches'],
+            'is_admin': users[auth['username']].get('is_admin', False),
+            'role': users[auth['username']].get('role', 'annotator')
         })
 
     return jsonify({'message': 'Invalid credentials'}), 401
@@ -230,6 +241,70 @@ def serve_image(batch_id, filename):
 def get_config():
     # In production, add authentication for this endpoint
     return jsonify(config)
+
+# Admin API: Get all users' progress
+@app.route('/api/admin/progress', methods=['GET'])
+@token_required
+def get_all_progress(current_user):
+    # Check if user is admin
+    if not users.get(current_user, {}).get('is_admin', False):
+        return jsonify({'message': 'Unauthorized access'}), 403
+    
+    # Get progress for all batches
+    progress_data = []
+    
+    for batch_id, batch_info in batch_mappings.items():
+        folder_path = batch_info['folder_path']
+        label_file = os.path.join(folder_path, 'labels.json')
+        
+        # Count total images in the batch
+        total_images = 0
+        valid_labeled = 0
+        invalid_marked = 0
+        
+        # Get all images in the batch
+        image_files = []
+        if os.path.exists(folder_path):
+            for file in os.listdir(folder_path):
+                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    total_images += 1
+                    image_files.append(file)
+        
+        # Load existing labels
+        labels = {}
+        if os.path.exists(label_file):
+            with open(label_file, 'r') as f:
+                labels = json.load(f)
+                
+        # Count labeled images
+        labeled_count = len(labels)
+        
+        # Count valid vs invalid
+        for image_name, label_info in labels.items():
+            if label_info.get('text') == 'INVALID':
+                invalid_marked += 1
+            else:
+                valid_labeled += 1
+                
+        # Find the user assigned to this batch
+        assigned_users = batch_info['users']
+        
+        # Create progress entry
+        for user in assigned_users:
+            progress_data.append({
+                'user': user,
+                'batch_id': batch_id,
+                'total_images': total_images,
+                'labeled_count': labeled_count,
+                'valid_labeled': valid_labeled,
+                'invalid_marked': invalid_marked,
+                'completion_percentage': (labeled_count / total_images * 100) if total_images > 0 else 0,
+                'last_update': max([label_info.get('updated_at', '2000-01-01') for label_info in labels.values()]) if labels else None
+            })
+    
+    return jsonify({
+        'progress': progress_data
+    })
 
 if __name__ == '__main__':
     host = os.getenv('FLASK_HOST', '0.0.0.0')
